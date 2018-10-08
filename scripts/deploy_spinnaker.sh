@@ -91,7 +91,7 @@ elif [ ! -z "${LB_SG}" ]; then
     for LB in "${GATE_LB}" "${DECK_LB}"; do
         PREV_GROUPS=$(aws elb describe-load-balancers --load-balancer-names ${LB} --query LoadBalancerDescriptions[0].SecurityGroups[*] --output text | tr "\t" " ")
         NEW_GROUPS=""
-        for GRP in ${PREV_GROUP}; do
+        for GRP in ${PREV_GROUPS}; do
             if [ "${GRP}" = "${LB_SG}" ]; then
                 echo "Do nothing"
             else
