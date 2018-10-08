@@ -1,0 +1,35 @@
+## Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+## SPDX-License-Identifier: MIT-0
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: deck-lb
+  labels:
+    app: spin
+    cluster: spin-deck
+spec:
+  ports:
+  - port: 80
+    targetPort: 9000
+  selector:
+    app: spin
+    cluster: spin-deck
+  type: LoadBalancer
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: gate-lb
+  labels:
+    app: spin
+    cluster: spin-gate
+spec:
+  ports:
+  - port: 80
+    targetPort: 8084
+  selector:
+    app: spin
+    cluster: spin-gate
+  type: LoadBalancer

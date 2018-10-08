@@ -1,0 +1,17 @@
+## Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+## SPDX-License-Identifier: MIT-0
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - apk add --no-cache curl bash
+      - curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.11.0/bin/linux/amd64/kubectl
+      - chmod +x kubectl
+      - mv kubectl /usr/local/bin
+      - curl -LO https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-07-26/bin/linux/amd64/aws-iam-authenticator
+      - chmod +x aws-iam-authenticator
+      - mv aws-iam-authenticator /usr/local/bin/heptio-authenticator-aws
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - aws s3 cp s3://codebuild-artifacts-${ACCOUNT_ID}/create-eks/files/resources/kubernetes/kubeconfig-no-role.yaml /root/.kube/config
+      - ./scripts/cleanup.sh -f ${SECURITY_GROUP_ID} -d ${FORCE_DELETE}

@@ -1,0 +1,185 @@
+## Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+## SPDX-License-Identifier: MIT-0
+
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CodeBuild Projects for EKS+Spinnaker'
+
+Parameters:
+
+  CodeBuildArtifactsBucketName:
+    Type: String
+    Default: codebuild-artifacts
+    Description: Name for the bucket where CodeBuild will save output artifacts
+
+  SourceLocation:
+    Type: String
+    Default: https://git-codecommit.us-west-2.amazonaws.com/v1/repos/myrepowithcode
+    Description: Location of source code for the create-eks and deploy spinnaker codebuild projects
+
+  SourceType:
+    Type: String
+    Default: GITHUB
+    AllowedValues:
+      - GITHUB
+      - CODECOMMIT
+
+Resources:
+
+  CreateEKSSpinnakerRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: create-eks-spinnaker
+        AssumeRolePolicyDocument:
+          Statement:
+            - Action:
+                - sts:AssumeRole
+              Effect: Allow
+              Principal:
+                Service: codebuild.amazonaws.com
+          Version: '2012-10-17'
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/PowerUserAccess
+          - arn:aws:iam::aws:policy/IAMFullAccess
+
+  CodeBuildArtifactsBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref CodeBuildArtifactsBucketName
+      Tags:
+        -
+          Key: cloudformation-stack
+          Value: !Ref AWS::StackId
+
+  CreateEKSProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Name: files
+        Location: !Ref CodeBuildArtifactsBucket
+        OverrideArtifactName: true
+        NamespaceType: NONE
+        Packaging: NONE
+        Path: create-eks
+        Type: S3
+      BadgeEnabled: true
+      Cache:
+        Type: NO_CACHE
+      Description: Creates and EKS cluster and supporting infrastructure/roles/policies for managing a Spinnaker instance
+      EncryptionKey:
+        Fn::Join: [ "", [ "arn:aws:kms:", { Ref: "AWS::Region" }, ":", { Ref: "AWS::AccountId" }, ":alias/aws/s3"]]
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: infrastructureascode/aws-cli
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          -
+            Name: K8S_NAME
+            Type: PLAINTEXT
+            Value: "spinnaker-infra"
+          -
+            Name: K8S_KEYPAIR
+            Type: PLAINTEXT
+            Value: "spinnaker-eks-keypair"
+          -
+            Name: BUCKET_NAME
+            Type: PLAINTEXT
+            Value: "spinnaker-infra"
+      Name: create-eks
+      ServiceRole: !Ref CreateEKSSpinnakerRole
+      Source:
+        BuildSpec: buildspec-infra.yaml
+        GitCloneDepth: 1
+        InsecureSsl: false
+        Location: !Ref SourceLocation
+        Type: !Ref SourceType
+      Tags:
+        -
+          Key: cloudformation-stack
+          Value: !Ref AWS::StackId
+      TimeoutInMinutes: 45
+
+  DeploySpinnakerProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      BadgeEnabled: true
+      Cache:
+        Type: NO_CACHE
+      Description: Deploys Spinnaker via Halyard
+      EncryptionKey:
+        Fn::Join: [ "", [ "arn:aws:kms:", { Ref: "AWS::Region" }, ":", { Ref: "AWS::AccountId" }, ":alias/aws/s3"]]
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: gcr.io/spinnaker-marketplace/halyard:stable
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          -
+            Name: SECURITY_GROUP_ID
+            Type: PLAINTEXT
+            Value: ""
+      Name: deploy-spinnaker
+      ServiceRole: !Ref CreateEKSSpinnakerRole
+      Source:
+        BuildSpec: buildspec-deploy.yaml
+        GitCloneDepth: 1
+        InsecureSsl: false
+        Location: !Ref SourceLocation
+        Type: !Ref SourceType
+      Tags:
+        -
+          Key: cloudformation-stack
+          Value: !Ref AWS::StackId
+      TimeoutInMinutes: 45
+
+  CleanUpProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      BadgeEnabled: true
+      Cache:
+        Type: NO_CACHE
+      Description: Deploys Spinnaker via Halyard
+      EncryptionKey:
+        Fn::Join: [ "", [ "arn:aws:kms:", { Ref: "AWS::Region" }, ":", { Ref: "AWS::AccountId" }, ":alias/aws/s3"]]
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: infrastructureascode/aws-cli
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          -
+            Name: SECURITY_GROUP_ID
+            Type: PLAINTEXT
+            Value: ""
+          -
+            Name: FORCE_DELETE
+            Type: PLAINTEXT
+            Value: "false"
+      Name: cleanup-infrastructure
+      ServiceRole: !Ref CreateEKSSpinnakerRole
+      Source:
+        BuildSpec: buildspec-cleanup.yaml
+        GitCloneDepth: 1
+        InsecureSsl: false
+        Location: !Ref SourceLocation
+        Type: !Ref SourceType
+      Tags:
+        -
+          Key: cloudformation-stack
+          Value: !Ref AWS::StackId
+      TimeoutInMinutes: 45
+
+Outputs:
+
+  CodeBuildArtifactsBucket:
+    Description: Bucket where codebuild artifacts are placed
+    Value: !Ref CodeBuildArtifactsBucket
+
+  CreateEKSSpinnakerRole:
+    Description: Role that the codebuild projects use for EKS and Spinnaker deployments
+    Value: !Ref CreateEKSSpinnakerRole

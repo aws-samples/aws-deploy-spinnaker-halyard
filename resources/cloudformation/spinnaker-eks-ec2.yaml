@@ -1,0 +1,400 @@
+## Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+## SPDX-License-Identifier: MIT-0
+
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Amazon EKS + Spinnaker Sample VPC'
+
+Parameters:
+
+  KubeVpcBlock:
+    Type: String
+    Default: 192.168.0.0/16
+    Description: The CIDR range for the EKS VPC. This should be a valid private (RFC 1918) CIDR range.
+
+  KubeSubnet01Block:
+    Type: String
+    Default: 192.168.64.0/18
+    Description: CidrBlock for subnet 01 within the EKS VPC
+
+  KubeSubnet02Block:
+    Type: String
+    Default: 192.168.128.0/18
+    Description: CidrBlock for subnet 02 within the EKS VPC
+
+  KubeSubnet03Block:
+    Type: String
+    Default: 192.168.192.0/18
+    Description: CidrBlock for subnet 03 within the EKS VPC
+
+  Ec2VpcBlock:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: The CIDR range for the EC2 VPC. This should be a vaid private (RFC 1918) CIDR range.
+
+  Ec2Subnet01Block:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CidrBlock for subnet 01 within the EC2 VPC
+
+  Ec2Subnet02Block:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CidrBlock for subnet 02 within the EC2 VPC
+
+  Ec2Subnet03Block:
+    Type: String
+    Default: 10.0.3.0/24
+    Description: CidrBlock for subnet 03 within the EC2 VPC
+
+  SpinnakerBucketName:
+    Type: String
+    Default: spinnaker-data
+    Description: Name for the bucket where Spinnaker will save persistent data
+
+  EKSClusterName:
+    Type: String
+    Default: spinnaker-infra
+    Description: Name for the EKS cluster where Spinnaker will reside
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Worker Network Configuration"
+        Parameters:
+          - KubeVpcBlock
+          - KubeSubnet01Block
+          - KubeSubnet02Block
+          - KubeSubnet03Block
+      -
+        Label:
+          default: "EC2 Network Configuration"
+        Parameters:
+          - Ec2VpcBlock
+          - Ec2Subnet01Block
+          - Ec2Subnet02Block
+          - Ec2Subnet03Block
+
+Resources:
+  EKSVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock:  !Ref KubeVpcBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      -
+        Key: Name
+        Value: !Sub 'EKS-VPC'
+      -
+        Key: cloudformation-stack
+        Value: !Ref AWS::StackId
+
+  EC2VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock:  !Ref Ec2VpcBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      -
+        Key: Name
+        Value: EC2-VPC
+      -
+        Key: cloudformation-stack
+        Value: !Ref AWS::StackId
+
+  EKSInternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: Name
+          Value: EKS-Internet-Gateway
+
+  EKSVPCGatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      InternetGatewayId: !Ref EKSInternetGateway
+      VpcId: !Ref EKSVPC
+
+  EKSRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EKSVPC
+      Tags:
+      - Key: Name
+        Value: Public Subnets
+      - Key: Network
+        Value: Public
+
+  EKSRoute:
+    DependsOn: EKSVPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref EKSRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref EKSInternetGateway
+
+  EKSSubnet01:
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: EKS Subnet 01
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '0'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: KubeSubnet01Block
+      VpcId:
+        Ref: EKSVPC
+      Tags:
+      - Key: Name
+        Value: !Join ["", ["eks-vpc.internal.", !Select ['0', !GetAZs {Ref: "AWS::Region"}]]]
+
+  EKSSubnet02:
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: EKS Subnet 02
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '1'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: KubeSubnet02Block
+      VpcId:
+        Ref: EKSVPC
+      Tags:
+      - Key: Name
+        Value: !Join ["", ["eks-vpc.internal.", !Select ['1', !GetAZs {Ref: "AWS::Region"}]]]
+
+  EKSSubnet03:
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: EKS Subnet 03
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '2'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: KubeSubnet03Block
+      VpcId:
+        Ref: EKSVPC
+      Tags:
+      - Key: Name
+        Value: !Join ["", ["eks-vpc.internal.", !Select ['2', !GetAZs {Ref: "AWS::Region"}]]]
+
+  EC2Subnet01:
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: EC2 Subnet 01
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - '0'
+          - Fn::GetAZs:
+              Ref: AWS::Region
+      CidrBlock:
+        Ref: Ec2Subnet01Block
+      VpcId:
+        Ref: EC2VPC
+      Tags:
+      -
+        Key: Name
+        Value: !Join ["", ["ec2-vpc.internal.", !Select ['0', !GetAZs {Ref: "AWS::Region"}]]]
+      -
+        Key: cloudformation-stack
+        Value: !Ref AWS::StackId
+
+  EC2Subnet02:
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: EC2 Subnet 02
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '1'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: Ec2Subnet02Block
+      VpcId:
+        Ref: EC2VPC
+      Tags:
+      -
+        Key: Name
+        Value: !Join ["", ["ec2-vpc.internal.", !Select ['1', !GetAZs {Ref: "AWS::Region"}]]]
+      -
+        Key: cloudformation-stack
+        Value: !Ref AWS::StackId
+
+  EC2Subnet03:
+    Type: AWS::EC2::Subnet
+    Metadata:
+      Comment: EC2 Subnet 03
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+        - '2'
+        - Fn::GetAZs:
+            Ref: AWS::Region
+      CidrBlock:
+        Ref: Ec2Subnet03Block
+      VpcId:
+        Ref: EC2VPC
+      Tags:
+      -
+        Key: Name
+        Value: !Join ["", ["ec2-vpc.internal.", !Select ['2', !GetAZs {Ref: "AWS::Region"}]]]
+      -
+        Key: cloudformation-stack
+        Value: !Ref AWS::StackId
+
+  EKSSubnet01RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EKSSubnet01
+      RouteTableId: !Ref EKSRouteTable
+
+  EKSSubnet02RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EKSSubnet02
+      RouteTableId: !Ref EKSRouteTable
+
+  EKSSubnet03RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EKSSubnet03
+      RouteTableId: !Ref EKSRouteTable
+
+  EKSControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: !Ref EKSVPC
+      Tags:
+      -
+        Key: Name
+        Value: eks-control-plane-sg
+
+  EKSAdmin:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: EKSAdminRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+      Path: "/"
+
+  EKSAdminInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      InstanceProfileName: EKSAdmin
+      Path: "/"
+      Roles:
+        -
+          Ref: "EKSAdmin"
+
+  EKSClusterRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: EKSCluster
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "eks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+      Path: "/"
+
+  EKSClusterInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      InstanceProfileName: EKSCluster
+      Path: "/"
+      Roles:
+        - !Ref EKSClusterRole
+
+  SpinnakerDataBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref SpinnakerBucketName
+
+  SpinnakerEKSCluster:
+    Type: "AWS::EKS::Cluster"
+    Properties:
+      Name: !Ref EKSClusterName
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !Ref EKSControlPlaneSecurityGroup
+        SubnetIds:
+          - !Ref EKSSubnet01
+          - !Ref EKSSubnet02
+          - !Ref EKSSubnet03
+      RoleArn: !GetAtt EKSClusterRole.Arn
+
+Outputs:
+
+  EKSSubnetIds:
+    Description: All subnets in the EKS VPC
+    Value: !Join [ ",", [ !Ref EKSSubnet01, !Ref EKSSubnet02, !Ref EKSSubnet03 ] ]
+
+  EC2SubnetIds:
+    Description: All subnets in the EC2 VPC
+    Value: !Join [ ",", [ !Ref EC2Subnet01, !Ref EC2Subnet02, !Ref EC2Subnet03]]
+
+  EKSSecurityGroups:
+    Description: Security group for the EKS cluster control plane communication with worker nodes
+    Value: !Join [ ",", [ !Ref EKSControlPlaneSecurityGroup ] ]
+
+  EKSVpcId:
+    Description: The EKS VPC Id
+    Value: !Ref EKSVPC
+
+  EC2VpcId:
+    Description: The Ec2 VPC Id
+    Value: !Ref EC2VPC
+
+  EKSAdminRole:
+    Description: EKS Admin Role
+    Value: !Ref EKSAdmin
+
+  EKSAdminInstanceProfile:
+    Description: EKS Admin Instance Profile
+    Value: !Ref EKSAdminInstanceProfile
+
+  EKSClusterRole:
+    Description: EKS Cluster Role
+    Value: !Ref EKSClusterRole
+
+  EKSClusterInstanceProfile:
+    Description: EKS Cluster Instance Profile
+    Value: !Ref EKSClusterInstanceProfile
+
+  SpinnakerDataBucket:
+    Description: Bucket name for spinnaker daa
+    Value: !Ref SpinnakerDataBucket
