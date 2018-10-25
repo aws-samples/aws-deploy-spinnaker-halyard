@@ -146,12 +146,13 @@ fi
 
 hal --color false config deploy edit --type distributed --account-name my-k8s-account
 
-hal --color false config version edit --version 1.9.5
+hal --color false config version edit --version 1.10.1
 
 #mkdir -p /home/spinnaker/.hal/default/service-settings
 #cp resources/halyard/deck.yml /home/spinnaker/.hal/default/service-settings/deck.yml
 
 hal --color false deploy apply
 
+set +x
 echo "The Spinnaker UI (deck) should be accessible at the following address: ${DECK_ADDRESS}"
 echo "The Spinnaker API server (gate) should be at the following address: ${GATE_ADDRESS}"
