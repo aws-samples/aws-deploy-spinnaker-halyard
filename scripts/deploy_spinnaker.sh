@@ -15,10 +15,10 @@ Usage: $0
 """ 1>&2; exit 1;
 }
 
-while getopts ":Sg:r:f:" o; do
+while getopts "S:g:r:f:" o; do
     case "${o}" in
         S)
-            USE_SSM_FOR_SECRETS=true
+            USE_SSM_FOR_SECRETS=${OPTARG}
             ;;
         g)
             GITHUB_ORG=${OPTARG}
@@ -46,6 +46,7 @@ if [ -z "${REGION}" ]; then
 fi
 
 if [ "${USE_SSM_FOR_SECRETS}" == true ]; then
+    LB_SG=""
     AUTHN_CLIENT_ID=$(aws ssm get-parameters --names github-authn-client-id --with-decryption --query Parameters[0].Value --output text)
     AUTHN_CLIENT_SECRET=$(aws ssm get-parameters --names github-authn-client-secret --with-decryption --query Parameters[0].Value --output text)
     AUTHZ_ACCESS_TOKEN=$(aws ssm get-parameters --names github-authz-token --with-decryption --query Parameters[0].Value --output text)
@@ -83,10 +84,11 @@ GATE_SG=$(aws elb describe-load-balancers --load-balancer-names ${GATE_LB} --que
 DECK_SG=$(aws elb describe-load-balancers --load-balancer-names ${DECK_LB} --query LoadBalancerDescriptions[0].SecurityGroups[0] --output text)
 
 if [ ! -z "${PREFIX_LIST}" ]; then
-    aws ec2 describe-security-groups --group-ids ${GATE_SG} | grep ${PREFIX_LIST} && echo "Found prefix list, skipping adding exception" || \
-        aws ec2 authorize-security-group-ingress --group-id ${GATE_SG} --ip-permissions '[{"FromPort":80,"IpProtocol":"tcp","PrefixListIds":[{"Description":"prefix-list-restriction","PrefixListId":"pl-f8a64391"}],"ToPort":80}]'
-    aws ec2 describe-security-groups --group-ids ${DECK_SG} | grep ${PREFIX_LIST}  && echo "Found prefix list, skipping adding exception" || \
-        aws ec2 authorize-security-group-ingress --group-id ${DECK_SG} --ip-permissions '[{"FromPort":80,"IpProtocol":"tcp","PrefixListIds":[{"Description":"prefix-list-restriction","PrefixListId":"pl-f8a64391"}],"ToPort":80}]'
+    for SG in "${GATE_SG}" "${DECK_SG}"; do
+        aws ec2 revoke-security-group-ingress --group-id ${SG} --protocol tcp --port 80 --cidr 0.0.0.0/0 || true
+        aws ec2 describe-security-groups --group-ids ${SG} | grep ${PREFIX_LIST} && echo "Found prefix list, skipping adding exception" || \
+        aws ec2 authorize-security-group-ingress --group-id ${SG} --ip-permissions '[{"FromPort":80,"IpProtocol":"tcp","PrefixListIds":[{"Description":"prefix-list-restriction","PrefixListId":"pl-f8a64391"}],"ToPort":80}]'
+    done
 elif [ ! -z "${LB_SG}" ]; then
     for LB in "${GATE_LB}" "${DECK_LB}"; do
         PREV_GROUPS=$(aws elb describe-load-balancers --load-balancer-names ${LB} --query LoadBalancerDescriptions[0].SecurityGroups[*] --output text | tr "\t" " ")

@@ -120,7 +120,11 @@ Resources:
           -
             Name: SECURITY_GROUP_ID
             Type: PLAINTEXT
-            Value: ""
+            Value: false
+          -
+            Name: USE_SSM
+            Type: PLAINTEXT
+            Value: false
       Name: deploy-spinnaker
       ServiceRole: !Ref CreateEKSSpinnakerRole
       Source:

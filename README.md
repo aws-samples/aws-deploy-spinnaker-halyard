@@ -32,7 +32,7 @@ This repository assumes you have a new AWS account and wish to test Spinnaker ou
 3. Navigate to CodeBuild
 4. Start the create-eks CodeBuild project
 5. Create a security group in the EKS-VPC to lock-down the Spinnaker load balancers take note of the security group id.
-6. Start the deploy-spinnaker CodeBuild project, fill in the environment variable "SECURITY_GROUP_ID" with the security group id from the previous step 
+6. Start the deploy-spinnaker CodeBuild project, fill in the environment variable "SECURITY_GROUP_ID" with the security group id from the previous step (replacing the "false" default)
 
 Spinnaker will be available at the UI/Deck address emitted at the end of the deploy-spinnaker CodeBuild job.
 
@@ -55,9 +55,7 @@ Once it is downloaded you can run kubectl commands as normal to read and output 
 
 # Exposing Services
 
-See the [buildspec section](#modifying-buildspec-for-authentication-and-security-groups) for some supplemental information.
-
-The code in this repository will create two load balancers using the EKS and EC2 integrations, these services are created in the deploy_spinnaker.sh. When created these load balancers are open to the world, so there are few flags in the deploy_spinnaker.sh to give you options on locking down the security groups, the flags in this example will apply the security group specified in the deploy_spinnaker.sh script to the load balancers to lock down load balancers.
+There are two methods in this repository that can expose the Spinnaker services on load balancers, one uses a user-provided security group that is locked down. These are controlled via environment variables in the deploy-spinnaker CodeBuild project. The second method is using SSM to store security information that can be used to lock down the Spinnaker installation even further. See details in the deploy_spinnaker.sh script.
 
 # Modifying the Spinnaker installation
 

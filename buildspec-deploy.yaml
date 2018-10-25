@@ -16,4 +16,4 @@ phases:
       - ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - aws s3 cp s3://codebuild-artifacts-${ACCOUNT_ID}/create-eks/files/resources/kubernetes/kubeconfig-no-role.yaml /home/spinnaker/.kube/config
-      - su spinnaker -c "./scripts/deploy_spinnaker.sh -f ${SECURITY_GROUP_ID}"
+      - su spinnaker -c "./scripts/deploy_spinnaker.sh -S ${USE_SSM} -f ${SECURITY_GROUP_ID}"
