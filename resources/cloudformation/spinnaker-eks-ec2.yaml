@@ -362,39 +362,65 @@ Outputs:
   EKSSubnetIds:
     Description: All subnets in the EKS VPC
     Value: !Join [ ",", [ !Ref EKSSubnet01, !Ref EKSSubnet02, !Ref EKSSubnet03 ] ]
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "eks-subnet-ids" ] ]
 
   EC2SubnetIds:
     Description: All subnets in the EC2 VPC
     Value: !Join [ ",", [ !Ref EC2Subnet01, !Ref EC2Subnet02, !Ref EC2Subnet03]]
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "ec2-subnet-ids" ] ]
 
   EKSSecurityGroups:
     Description: Security group for the EKS cluster control plane communication with worker nodes
     Value: !Join [ ",", [ !Ref EKSControlPlaneSecurityGroup ] ]
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "eks-security-groups" ] ]
 
   EKSVpcId:
     Description: The EKS VPC Id
     Value: !Ref EKSVPC
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "eks-vpc-id" ] ]
 
   EC2VpcId:
     Description: The Ec2 VPC Id
     Value: !Ref EC2VPC
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "ec2-vpc-id" ] ]
 
   EKSAdminRole:
     Description: EKS Admin Role
     Value: !Ref EKSAdmin
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "eks-admin-role" ] ]
+
+  EKSAdminRoleArn:
+    Description: EKS Admin Role Arn
+    Value: !GetAtt EKSAdmin.Arn
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "eks-admin-role-arn"]]
 
   EKSAdminInstanceProfile:
     Description: EKS Admin Instance Profile
     Value: !Ref EKSAdminInstanceProfile
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "eks-admin-profile" ] ]
 
   EKSClusterRole:
     Description: EKS Cluster Role
     Value: !Ref EKSClusterRole
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "eks-cluster-role" ] ]
 
   EKSClusterInstanceProfile:
     Description: EKS Cluster Instance Profile
     Value: !Ref EKSClusterInstanceProfile
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "eks-cluster-instance-profile" ] ]
 
   SpinnakerDataBucket:
-    Description: Bucket name for spinnaker daa
-    Value: !Ref SpinnakerDataBucket
+    Description: Bucket name for spinnaker data
+    Value: !GetAtt SpinnakerDataBucket.Arn
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "spinnaker-data-bucket" ] ]

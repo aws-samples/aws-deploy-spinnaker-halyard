@@ -87,20 +87,16 @@ function createEKSWorkers {
     EKS_WORKER_STACK_NAME=${1}
     K8S_NAME=${2}
     K8S_KEYPAIR=${3}
-    SECURITY_GROUPS=${4}
-    SUBNET_IDS=${5}
-    VPC_ID_=${6}
-    WORKER_AMI=${7}
-    WORKER_TYPE=${8}
-    SPINNAKER_BUCKET=${9}
-    ACCOUNT_ID=${10}
+    WORKER_AMI=${4}
+    WORKER_TYPE=${5}
+    ACCOUNT_ID=${6}
+    NETWORK_STACK_NAME=${7}
     echo "Creating EKS worker nodes"
     aws cloudformation describe-stacks --stack-name ${EKS_WORKER_STACK_NAME} && echo "stack ${EKS_WORKER_STACK_NAME} already exists" || \
         aws cloudformation deploy --stack-name ${EKS_WORKER_STACK_NAME} \
             --template-file resources/cloudformation/spinnaker-eks-nodegroup.yaml \
             --parameter-overrides ClusterName=${K8S_NAME} KeyName=${K8S_KEYPAIR} SpinnakerBucketName=${SPINNAKER_BUCKET}-${ACCOUNT_ID} \
-                ClusterControlPlaneSecurityGroup=${SECURITY_GROUPS} NodeGroupName=spinnaker-eks VpcId=${VPC_ID} \
-                NodeImageId=${WORKER_AMI} NodeInstanceType=${WORKER_TYPE} Subnets=${SUBNET_IDS} \
+                NodeGroupName=spinnaker-eks NodeImageId=${WORKER_AMI} NodeInstanceType=${WORKER_TYPE} NetworkStackName=${NETWORK_STACK_NAME} \
             --capabilities CAPABILITY_NAMED_IAM
     aws cloudformation wait stack-create-complete --stack-name ${EKS_WORKER_STACK_NAME}
 }
@@ -135,11 +131,7 @@ function updateKubeRoles {
 
 function main {
     createEKS ${EKS_EC2_VPC_STACK_NAME} ${SPINNAKER_BUCKET} ${ACCOUNT_ID}
-    SECURITY_GROUPS=$(aws cloudformation describe-stacks --stack-name ${EKS_EC2_VPC_STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`EKSSecurityGroups`].OutputValue' --output text)
-    VPC_ID=$(aws cloudformation describe-stacks --stack-name ${EKS_EC2_VPC_STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`EKSVpcId`].OutputValue' --output text)
-    SUBNET_IDS=$(aws cloudformation describe-stacks --stack-name ${EKS_EC2_VPC_STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`EKSSubnetIds`].OutputValue' --output text)
-    EKS_ROLE=$(aws cloudformation describe-stacks --stack-name ${EKS_EC2_VPC_STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`EKSClusterRole`].OutputValue' --output text)
-    createEKSWorkers ${EKS_WORKER_STACK_NAME} ${K8S_NAME} ${K8S_KEYPAIR} ${SECURITY_GROUPS} ${SUBNET_IDS} ${VPC_ID} ${WORKER_AMI} ${WORKER_TYPE} ${SPINNAKER_BUCKET} ${ACCOUNT_ID}
+    createEKSWorkers ${EKS_WORKER_STACK_NAME} ${K8S_NAME} ${K8S_KEYPAIR} ${WORKER_AMI} ${WORKER_TYPE} ${ACCOUNT_ID} ${EKS_EC2_VPC_STACK_NAME}
     EKS_NODE_INSTANCE_ROLE_ARN=$(aws cloudformation describe-stacks --stack-name ${EKS_WORKER_STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`NodeInstanceRole`].OutputValue' --output text)
     K8S_ENDPOINT=$(aws eks describe-cluster --name ${K8S_NAME} --query 'cluster.endpoint' --output text)
     CA_DATA=$(aws eks describe-cluster --name ${K8S_NAME} --query 'cluster.certificateAuthority.data' --output text)
@@ -178,6 +170,7 @@ function main {
     fi
     ./scripts/create_spinnaker_managed.sh -a ${EKS_NODE_INSTANCE_ROLE_ARN}
     # We need to create a load balancer and delete it so we can make EKS lbs
+    SUBNET_IDS=$(aws cloudformation describe-stacks --stack-name ${EKS_EC2_VPC_STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`EKSSubnetIds`].OutputValue' --output text)
     SUBNET_ID=$(echo "${SUBNET_IDS}" | cut -d "," -f 1)
     aws elb create-load-balancer --load-balancer-name temp-lb-${ACCOUNT_ID} --listeners "Protocol=HTTP,LoadBalancerPort=80,InstanceProtocol=HTTP,InstancePort=80" --subnets "${SUBNET_ID}"
     aws elb delete-load-balancer --load-balancer-name temp-lb-${ACCOUNT_ID}
