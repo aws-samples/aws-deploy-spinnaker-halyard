@@ -60,7 +60,7 @@ fi
 
 BAKING_VPC=$(aws ec2 describe-vpcs --filters Name=cidr,Values=172.31.0.0/16 --query Vpcs[0].VpcId --output text)
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-SPINNAKER_BUCKET=$(aws cloudformation describe-stacks --stack-name ${EKS_EC2_VPC_STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`SpinnakerDataBucket`].OutputValue' --output text)
+SPINNAKER_BUCKET=$(aws cloudformation describe-stacks --stack-name ${EKS_EC2_VPC_STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`SpinnakerDataBucket`].OutputValue' --output text | cut -d ":" -f6)
 SPINNAKER_MANAGED_ROLE="role/SpinnakerManaged"
 
 echo "Creating some kubernetes resources before running halyard"
@@ -125,6 +125,9 @@ hal --color false config provider aws enable
 hal --color false config provider kubernetes account add my-k8s-account --provider-version v2 --context spinnaker-context --namespaces default,spinnaker
 hal --color false config features edit --artifacts true
 hal --color false config provider kubernetes enable
+
+hal --color false config provider ecs account add my-ecs-account --aws-account my-aws-account
+hal --color false config provider ecs enable
 
 hal --color false config storage s3 edit \
     --bucket ${SPINNAKER_BUCKET} \
