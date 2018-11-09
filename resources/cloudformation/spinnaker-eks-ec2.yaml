@@ -113,16 +113,39 @@ Resources:
         - Key: Name
           Value: EKS-Internet-Gateway
 
+  EC2InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: Name
+          Value: EC2-Internet-Gateway
+
   EKSVPCGatewayAttachment:
     Type: "AWS::EC2::VPCGatewayAttachment"
     Properties:
       InternetGatewayId: !Ref EKSInternetGateway
       VpcId: !Ref EKSVPC
 
+  EC2VPCGatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      InternetGatewayId: !Ref EC2InternetGateway
+      VpcId: !Ref EC2VPC
+
   EKSRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref EKSVPC
+      Tags:
+      - Key: Name
+        Value: Public Subnets
+      - Key: Network
+        Value: Public
+
+  EC2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EC2VPC
       Tags:
       - Key: Name
         Value: Public Subnets
@@ -136,6 +159,14 @@ Resources:
       RouteTableId: !Ref EKSRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref EKSInternetGateway
+
+  EC2Route:
+    DependsOn: EC2VPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref EC2RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref EC2InternetGateway
 
   EKSSubnet01:
     Type: AWS::EC2::Subnet
@@ -274,6 +305,24 @@ Resources:
     Properties:
       SubnetId: !Ref EKSSubnet03
       RouteTableId: !Ref EKSRouteTable
+
+  EC2Subnet01RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EC2Subnet01
+      RouteTableId: !Ref EC2RouteTable
+
+  EC2Subnet02RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EC2Subnet02
+      RouteTableId: !Ref EC2RouteTable
+
+  EC2Subnet03RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EC2Subnet03
+      RouteTableId: !Ref EC2RouteTable
 
   EKSControlPlaneSecurityGroup:
     Type: AWS::EC2::SecurityGroup

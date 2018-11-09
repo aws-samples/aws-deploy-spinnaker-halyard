@@ -61,6 +61,16 @@ There are two methods in this repository that can expose the Spinnaker services 
 
 If you need to tweak the halyard settings that are applied to the Spinnaker installation this can be accomplished by modifying the `deploy_spinnaker.sh` script. Once modified you can upload your changes to the source control, and then rerun the deploy-spinnaker CodeBuild job to apply the changes.
 
+# Updating Spinnaker Release Version
+
+The default version deployed by this repository will be updated periodically, if you wish to try out a newer version than this repository defaults to, the deploy-spinnaker CodeBuild job takes a Spinnaker release verison as a parameter. This can either be a SemVer version number or `master-latest-unvalidated`
+
+# Known Issues
+
+Ocassionally we will fill in known issues with the chosen version of Spinnaker that this repository deploys. Issues that have been fixed can be found in the Spinnaker changelogs here:
+
+https://www.spinnaker.io/community/releases/versions/
+
 # Feedback
 
 This repository is meant to be an easy method of deploying Spinnaker to a brand new AWS account for demo purposes. Not all use cases are meant to be covered, but if new use cases can be added without making the repository difficult to use, then they are more than welcome. You can submit changes or fixes to this repository by submitting a pull request on this repository. We will review and provide feedback, we might need further follow up from pull request authors to make changes.

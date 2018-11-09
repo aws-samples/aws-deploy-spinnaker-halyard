@@ -11,11 +11,12 @@ Usage: $0
     -g      Github Organization, if set and other AUTHN and AUTHZ secrets set this is the org to be used for AUTHN and AUTHZ in Spinnaker
     -r      AWS Region, where the S3 bucket for Spinnaker is located
     -f      Load balancer security group, places the security group provided on the AWS load balancers to lock them down.
+    -s      Spinnaker Version number
     -h      Help, print this help message
 """ 1>&2; exit 1;
 }
 
-while getopts "S:g:r:f:" o; do
+while getopts "S:g:r:f:s:" o; do
     case "${o}" in
         S)
             USE_SSM_FOR_SECRETS=${OPTARG}
@@ -28,6 +29,9 @@ while getopts "S:g:r:f:" o; do
             ;;
         f)
             LB_SG=${OPTARG}
+            ;;
+        s)
+            SPINNAKER_VERSION=${OPTARG}
             ;;
         h)
             usage
@@ -148,7 +152,7 @@ fi
 
 hal --color false config deploy edit --type distributed --account-name my-k8s-account
 
-hal --color false config version edit --version 1.10.1
+hal --color false config version edit --version ${SPINNAKER_VERSION}
 
 #mkdir -p /home/spinnaker/.hal/default/service-settings
 #cp resources/halyard/deck.yml /home/spinnaker/.hal/default/service-settings/deck.yml
