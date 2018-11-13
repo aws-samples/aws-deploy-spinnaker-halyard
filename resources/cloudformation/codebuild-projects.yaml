@@ -125,6 +125,10 @@ Resources:
             Name: USE_SSM
             Type: PLAINTEXT
             Value: false
+          -
+            Name: SPINNAKER_VERSION
+            Type: PLAINTEXT
+            Value: 1.10.2
       Name: deploy-spinnaker
       ServiceRole: !Ref CreateEKSSpinnakerRole
       Source:
@@ -147,7 +151,7 @@ Resources:
       BadgeEnabled: true
       Cache:
         Type: NO_CACHE
-      Description: Deploys Spinnaker via Halyard
+      Description: Cleanup infrastructure deployed by aws-deploy-spinnaker-halyard
       EncryptionKey:
         Fn::Join: [ "", [ "arn:aws:kms:", { Ref: "AWS::Region" }, ":", { Ref: "AWS::AccountId" }, ":alias/aws/s3"]]
       Environment:
