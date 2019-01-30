@@ -17,7 +17,7 @@ This repository assumes you have a new AWS account and wish to test Spinnaker ou
 # Quick Start
 
 1. Fork this repository on GitHub (or CodeCommit)
-2. Run the following from a terminal with aws cli access to your account (change GITHUB to CODECOMMIT if code is uploaded there)
+2. Run the following from a terminal with aws cli access to your account (change GITHUB to CODECOMMIT if code is uploaded there).  Ensure you run this in us-west-2 as the AMI is only available there.
 
     ```
     ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
