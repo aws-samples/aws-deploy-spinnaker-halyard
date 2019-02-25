@@ -60,7 +60,7 @@ if [ -z "${SPINNAKER_BUCKET}" ]; then
 fi
 
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-WORKER_AMI="ami-0a54c984b9f908c81"
+WORKER_AMI="ami-0e7ee8863c8536cce"
 WORKER_TYPE="t2.large"
 EKS_EC2_VPC_STACK_NAME="spin-eks-ec2-vpc"
 EKS_WORKER_STACK_NAME="spinnaker-infra-eks-nodes"
