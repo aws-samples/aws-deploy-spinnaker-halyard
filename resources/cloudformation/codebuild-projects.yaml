@@ -128,7 +128,7 @@ Resources:
           -
             Name: SPINNAKER_VERSION
             Type: PLAINTEXT
-            Value: 1.10.2
+            Value: 1.16.4
       Name: deploy-spinnaker
       ServiceRole: !Ref CreateEKSSpinnakerRole
       Source:
